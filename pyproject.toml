@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "word_filler"
+version = "0.0.1"
+dependencies = [
+    "pywin32 >= 302",
+]
