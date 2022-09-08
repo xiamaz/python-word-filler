@@ -32,11 +32,14 @@ def split_text(fmttext: str) -> Tuple[str, List[Format]]:
     tagname = False
     tag_stack = []
     text_index = 0
+    escaped = False
     for c in fmttext:
-        if c == "<":
+        if c == "\\" and not escaped:
+            escaped = True
+        elif c == "<" and not escaped:
             curtag = ""
             tagname = True
-        elif c == ">":
+        elif c == ">" and tagname and not escaped:
             tagname, *attrs = curtag.split(" ")
             if tagname.startswith("/"):
                 for t in tag_stack[::-1]:
@@ -52,9 +55,11 @@ def split_text(fmttext: str) -> Tuple[str, List[Format]]:
             tagname = False
         elif tagname:
             curtag += c
+            escaped = False
         else:
             text += c
             text_index += 1
+            escaped = False
     return text, tag_stack
 
 @dataclass
@@ -86,7 +91,7 @@ class ContentControlField:
                     elif fmt.tag == "font":
                         subrange.Font.Size = int(fmt.attrs['size'])
                     else:
-                        raise RuntimeError(f"Unsupported tag: {fmt.tag}")
+                        raise RuntimeError(f"Unsupported tag: {fmt.tag} for {fmt} when processing {text}")
             elif self.type in (ContentControlType.DropdownList,):
                 if self.name == "Patientengeschlecht":
                     if text == "m":
