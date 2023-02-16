@@ -31,6 +31,7 @@ def split_text(fmttext: str) -> Tuple[str, List[Format]]:
     curtag = ""
     tagname = False
     tag_stack = []
+    open_tags = []
     text_index = 0
     escaped = False
     for c in fmttext:
@@ -42,14 +43,16 @@ def split_text(fmttext: str) -> Tuple[str, List[Format]]:
         elif c == ">" and tagname and not escaped:
             tagname, *attrs = curtag.split(" ")
             if tagname.startswith("/"):
-                for t in tag_stack[::-1]:
-                    if t.tag == tagname[1:]:
+                for i, t in reversed(list(enumerate(open_tags))):
+                    if t.tag == tagname[1:]: # remeber we have a slash
                         t.stop = text_index
+                        tag_stack.insert(0, t)
+                        open_tags.pop(i)
                         break
                 else:
                     raise RuntimeError("Could not find matching start for {curtag} tag")
             else:
-                tag_stack.append(
+                open_tags.append(
                     Format(tag=tagname, start=text_index, stop=-1, attrs=dict([a.split("=") for a in attrs]))
                 )
             tagname = False
@@ -60,6 +63,7 @@ def split_text(fmttext: str) -> Tuple[str, List[Format]]:
             text += c
             text_index += 1
             escaped = False
+    assert len(open_tags) == 0
     return text, tag_stack
 
 @dataclass
@@ -90,9 +94,13 @@ class ContentControlField:
                         subrange.Font.Italic = True
                     elif fmt.tag == "font":
                         subrange.Font.Size = int(fmt.attrs['size'])
+                    elif fmt.tag == "n":
+                        subrange.Font.Bold = False
+                        subrange.Font.Italic = False
                     else:
                         raise RuntimeError(f"Unsupported tag: {fmt.tag} for {fmt} when processing {text}")
             elif self.type in (ContentControlType.DropdownList,):
+                print("Trying to get Patientengeschlecht")
                 if self.name == "Patientengeschlecht":
                     if text == "m":
                         obj.DropDownListEntries[1].Select()
@@ -106,7 +114,7 @@ class ContentControlField:
                             entry.Select()
                             break
                     else:
-                        raise RuntimeError("No matching entry found!")
+                        raise RuntimeError(f"No matching entry found for {text}.")
             elif self.type == ContentControlType.Date:
                 obj.Range.Text = text
             else:
@@ -154,7 +162,10 @@ class Document:
         """
         fields = self.get_fields()
         for key, value in mapping.items():
-            fields[key].value = value
+            if key in fields:
+                fields[key].value = value
+            else:
+                print(f"Could not find {key}, will continue...")
     
     def save(self, path: Union[str, Path]):
         """Save to new docx document.
