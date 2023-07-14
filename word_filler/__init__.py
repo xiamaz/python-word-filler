@@ -94,9 +94,15 @@ class ContentControlField:
                         subrange.Font.Italic = True
                     elif fmt.tag == "font":
                         subrange.Font.Size = int(fmt.attrs['size'])
+                    elif fmt.tag == "sup":  # superscript
+                        subrange.Font.Superscript = True
+                    elif fmt.tag == "sub":
+                        subrange.Font.Subscript = True
                     elif fmt.tag == "n":
                         subrange.Font.Bold = False
                         subrange.Font.Italic = False
+                        subrange.Font.Superscript = False
+                        subrange.Font.Subscript = False
                     else:
                         raise RuntimeError(f"Unsupported tag: {fmt.tag} for {fmt} when processing {text}")
             elif self.type in (ContentControlType.DropdownList,):
@@ -167,10 +173,13 @@ class Document:
             else:
                 print(f"Could not find {key}, will continue...")
     
-    def save(self, path: Union[str, Path]):
+    def save(self, path: Union[str, Path, None] = None):
         """Save to new docx document.
         """
-        self._doc.SaveAs2(str(path), FileFormat=12)
+        if path:
+            self._doc.SaveAs2(str(path), FileFormat=12)
+        else:
+            self._doc.Save()
 
     def close(self):
         self._doc.Close()
